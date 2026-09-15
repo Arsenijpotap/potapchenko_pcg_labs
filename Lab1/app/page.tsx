@@ -1,8 +1,8 @@
 'use client';
 
-import { ColorSettings } from '../src/view/ColorSettings';
-import { ColorWorkspace } from '../src/view/ColorWorkspace';
-import { useColorController } from '../src/controller/use-color-controller';
+import { ColorSettings } from '../view/ColorSettings';
+import { ColorWorkspace } from '../view/ColorWorkspace';
+import { useColorController } from '../controller/use-color-controller';
 
 export default function Page() {
   const controller = useColorController();
