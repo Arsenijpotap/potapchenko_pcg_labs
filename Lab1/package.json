@@ -3,7 +3,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types src/tests/color-conversion.test.ts"
+    "test": "node --experimental-strip-types tests/color-conversion.test.ts && node --experimental-strip-types tests/controller-gradients.test.ts && node --experimental-strip-types tests/slider-gradients.test.ts"
   },
   "dependencies": {
     "next": "14.2.5",

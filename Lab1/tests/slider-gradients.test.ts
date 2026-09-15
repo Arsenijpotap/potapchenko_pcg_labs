@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import assert from 'node:assert/strict';
 
-const file = readFileSync(join(process.cwd(), 'src/controller/use-color-controller.ts'), 'utf8');
+const file = readFileSync(join(process.cwd(), 'controller/use-color-controller.ts'), 'utf8');
 
 assert.ok(file.includes("c: 'linear-gradient(to right, #ffffff, #00ffff)'"));
 assert.ok(file.includes("m: 'linear-gradient(to right, #ffffff, #ff00ff)'"));
