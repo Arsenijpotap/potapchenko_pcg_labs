@@ -1,0 +1,2 @@
+import {parseImage} from '../parsers';
+self.onmessage=async(e:MessageEvent<{id:string;file:File;name:string;path:string;sizeBytes:number}>)=>{const {id,file,name,path,sizeBytes}=e.data;try{const info=await parseImage(file);self.postMessage({id,name,path,sizeBytes,status:'ok',...info})}catch(err){self.postMessage({id,name,path,sizeBytes,status:'error',format:'UNKNOWN',error:err instanceof Error?err.message:String(err)})}};
