@@ -53,8 +53,9 @@ export default function ImageScanner() {
 			<header className="topbar">
 				<div className="brand">
 					<span className="brandMark">IMG</span>
+					<span>Image Info</span>
 				</div>
-				{/* <div className="topbarHint">Файлы изображений</div> */}
+				<div className="topbarHint">Файлы изображений</div>
 			</header>
 
 			<section className="hero">
@@ -149,7 +150,20 @@ export default function ImageScanner() {
 									<td>{r.colorDepth ? `${r.colorDepth} bit` : "—"}</td>
 									<td title={r.details}>{r.compression || "—"}</td>
 									<td title={r.path}>{r.path}</td>
-									<td className={r.status === "ok" ? "statusOk" : "statusError"}>{r.status === "ok" ? "OK" : r.error || "Ошибка"}</td>
+									<td
+										title={r.status === "ok" ? "OK" : r.error || "Ошибка"}
+										className={r.status === "ok" ? "statusOk" : "statusError"}
+										style={{
+											whiteSpace: "normal",
+											overflowWrap: "anywhere",
+											textOverflow: "clip",
+											lineHeight: 1.35,
+											paddingTop: 9,
+											paddingBottom: 9,
+										}}
+									>
+										{r.status === "ok" ? "OK" : r.error || "Ошибка"}
+									</td>
 								</tr>
 							))}
 						</tbody>
