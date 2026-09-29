@@ -52,7 +52,7 @@ export default function ImageScanner() {
 		<main className="page">
 			<header className="topbar">
 				<div className="brand">
-					<span className="brandMark">IMG</span>
+					{/* <span className="brandMark">IMG</span> */}
 					<span>Image Info</span>
 				</div>
 				<div className="topbarHint">Файлы изображений</div>
