@@ -1,2 +1,15 @@
-import {ImageInfo} from '../core/types';import {ParseError} from './utils';
-export async function parsePCX(file:File):Promise<Partial<ImageInfo>>{const b=new DataView(await file.slice(0,128).arrayBuffer());if(b.byteLength<128||b.getUint8(0)!==0x0a)throw new ParseError('PCX: неверная сигнатура');const xMin=b.getUint16(4,true),yMin=b.getUint16(6,true),xMax=b.getUint16(8,true),yMax=b.getUint16(10,true),xd=b.getUint16(12,true),yd=b.getUint16(14,true),planes=b.getUint8(65),bpp=b.getUint8(3);return{format:'PCX',width:xMax-xMin+1,height:yMax-yMin+1,colorDepth:planes*bpp,dpiX:xd||undefined,dpiY:yd||undefined,compression:'RLE',details:`planes: ${planes}, bits/plane: ${bpp}`}} 
+import { ImageInfo } from "../core/types";
+import { ParseError } from "./utils";
+export async function parsePCX(file: File): Promise<Partial<ImageInfo>> {
+	const b = new DataView(await file.slice(0, 128).arrayBuffer());
+	if (b.byteLength < 128 || b.getUint8(0) !== 0x0a) throw new ParseError("PCX: неверная сигнатура");
+	const xMin = b.getUint16(4, true),
+		yMin = b.getUint16(6, true),
+		xMax = b.getUint16(8, true),
+		yMax = b.getUint16(10, true),
+		xd = b.getUint16(12, true),
+		yd = b.getUint16(14, true),
+		planes = b.getUint8(65),
+		bpp = b.getUint8(3);
+	return { format: "PCX", width: xMax - xMin + 1, height: yMax - yMin + 1, colorDepth: planes * bpp, dpiX: xd || undefined, dpiY: yd || undefined, compression: "RLE", details: `planes: ${planes}, bits/plane: ${bpp}` };
+}
