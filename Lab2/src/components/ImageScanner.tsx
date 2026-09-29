@@ -11,17 +11,50 @@ export default function ImageScanner() {
 	const folderInput = useRef<HTMLInputElement>(null);
 	const fileInput = useRef<HTMLInputElement>(null);
 	const scanner = useRef<Scanner | null>(null);
+	const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const resultBuffer = useRef<ImageInfo[]>([]);
+
 	const [rows, setRows] = useState<ImageInfo[]>([]);
 	const [total, setTotal] = useState(0);
 	const [done, setDone] = useState(0);
 	const [busy, setBusy] = useState(false);
 	const [query, setQuery] = useState("");
-	const [sort, setSort] = useState<keyof ImageInfo>("name");
+
+	// По умолчанию сначала OK, затем ошибки
+	const [sort, setSort] = useState<keyof ImageInfo>("status");
+
+	const flushResults = () => {
+		if (!resultBuffer.current.length) return;
+
+		const batch = resultBuffer.current.splice(0, resultBuffer.current.length);
+		setRows((prev) => [...prev, ...batch]);
+	};
+
+	const scheduleFlush = () => {
+		if (flushTimer.current !== null) return;
+
+		flushTimer.current = setTimeout(() => {
+			flushTimer.current = null;
+			flushResults();
+		}, 100);
+	};
+
+	const clearPendingFlush = () => {
+		if (flushTimer.current !== null) {
+			clearTimeout(flushTimer.current);
+			flushTimer.current = null;
+		}
+	};
 
 	const start = (files: FileList | null) => {
 		if (!files?.length) return;
+
+		clearPendingFlush();
+		resultBuffer.current = [];
 		scanner.current?.cancel();
+
 		const list = Array.from(files);
+
 		setRows([]);
 		setTotal(list.length);
 		setDone(0);
@@ -29,32 +62,67 @@ export default function ImageScanner() {
 
 		const current = new Scanner();
 		scanner.current = current;
+
 		current.scan(
 			list,
-			(item) => setRows((prev) => [...prev, item]),
+			(item) => {
+				resultBuffer.current.push(item);
+				scheduleFlush();
+			},
 			(value) => setDone(value),
 			() => {
+				clearPendingFlush();
+				flushResults();
 				setBusy(false);
 				scanner.current = null;
 			},
 		);
 	};
 
+	const stop = () => {
+		clearPendingFlush();
+		scanner.current?.cancel();
+		flushResults();
+		setBusy(false);
+	};
+
 	const filtered = useMemo(() => {
 		const q = query.trim().toLocaleLowerCase("ru");
-		return rows.filter((r) => !q || `${r.name} ${r.path} ${r.format} ${r.error ?? ""}`.toLocaleLowerCase("ru").includes(q)).sort((a, b) => String(a[sort] ?? "").localeCompare(String(b[sort] ?? ""), "ru", { numeric: true }));
+
+		return rows
+			.filter((r) => !q || `${r.name} ${r.path} ${r.format} ${r.error ?? ""}`.toLocaleLowerCase("ru").includes(q))
+			.sort((a, b) => {
+				// Сначала успешные файлы, затем ошибки
+				if (sort === "status") {
+					const statusA = a.status === "ok" ? 0 : 1;
+					const statusB = b.status === "ok" ? 0 : 1;
+
+					if (statusA !== statusB) {
+						return statusA - statusB;
+					}
+
+					return a.name.localeCompare(b.name, "ru", {
+						numeric: true,
+					});
+				}
+
+				return String(a[sort] ?? "").localeCompare(String(b[sort] ?? ""), "ru", {
+					numeric: true,
+				});
+			});
 	}, [rows, query, sort]);
 
 	const errors = rows.filter((r) => r.status === "error").length;
+	const processed = rows.length;
 	const percent = total ? Math.min(100, (done / total) * 100) : 0;
 
 	return (
 		<main className="page">
 			<header className="topbar">
 				<div className="brand">
-					{/* <span className="brandMark">IMG</span> */}
 					<span>Image Info</span>
 				</div>
+
 				<div className="topbarHint">Файлы изображений</div>
 			</header>
 
@@ -63,14 +131,30 @@ export default function ImageScanner() {
 					<h1>Сведения об изображениях</h1>
 					<p>Выберите папку или несколько файлов, чтобы посмотреть основные параметры.</p>
 				</div>
+
 				<div className="heroActions">
 					<button className="primary" onClick={() => folderInput.current?.click()}>
-						<FolderOpen size={18} /> Выбрать папку
+						<FolderOpen size={18} />
+						Выбрать папку
 					</button>
+
 					<button className="secondary" onClick={() => fileInput.current?.click()}>
-						<Upload size={18} /> Файлы
+						<Upload size={18} />
+						Файлы
 					</button>
-					<input ref={folderInput} hidden type="file" multiple {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={(e) => start(e.target.files)} />
+
+					<input
+						ref={folderInput}
+						hidden
+						type="file"
+						multiple
+						{...({
+							webkitdirectory: "",
+							directory: "",
+						} as Record<string, string>)}
+						onChange={(e) => start(e.target.files)}
+					/>
+
 					<input ref={fileInput} hidden type="file" multiple accept=".jpg,.jpeg,.gif,.tif,.tiff,.bmp,.png,.pcx" onChange={(e) => start(e.target.files)} />
 				</div>
 			</section>
@@ -78,34 +162,36 @@ export default function ImageScanner() {
 			<section className="panel controls">
 				<div className="progressInfo">
 					<div className="progressTitle">{busy ? "Обработка файлов" : total ? "Обработка завершена" : "Ожидание файлов"}</div>
+
 					<div className="progressCount">
 						{fmt(done)} / {fmt(total)}
 					</div>
 				</div>
+
 				<div className="progressTrack">
 					<div className="progressValue" style={{ width: `${percent}%` }} />
 				</div>
+
 				<div className="controlRow">
 					<div className="stats">
 						<span>
-							<CheckCircle2 size={15} /> {fmt(rows.filter((r) => r.status === "ok").length)} обработано
+							<CheckCircle2 size={15} /> {fmt(processed)} обработано
 						</span>
+
 						<span>{fmt(errors)} ошибок</span>
 					</div>
+
 					<div className="controlRight">
 						<div className="search">
 							<Search size={16} />
+
 							<input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по файлам" />
 						</div>
+
 						{busy && (
-							<button
-								className="stop"
-								onClick={() => {
-									scanner.current?.cancel();
-									setBusy(false);
-								}}
-							>
-								<Square size={14} /> Остановить
+							<button className="stop" onClick={stop}>
+								<Square size={14} />
+								Остановить
 							</button>
 						)}
 					</div>
@@ -136,26 +222,35 @@ export default function ImageScanner() {
 								))}
 							</tr>
 						</thead>
+
 						<tbody>
 							{filtered.map((r) => (
 								<tr key={r.id}>
 									<td title={r.name}>
 										<strong>{r.name}</strong>
 									</td>
+
 									<td>
 										<span className="badge">{r.format}</span>
 									</td>
+
 									<td>{r.width && r.height ? `${fmt(r.width)} × ${fmt(r.height)}` : "—"}</td>
+
 									<td>{r.dpiX && r.dpiY ? `${r.dpiX.toFixed(1)} × ${r.dpiY.toFixed(1)}` : "—"}</td>
+
 									<td>{r.colorDepth ? `${r.colorDepth} bit` : "—"}</td>
+
 									<td title={r.details}>{r.compression || "—"}</td>
+
 									<td title={r.path}>{r.path}</td>
+
 									<td
 										title={r.status === "ok" ? "OK" : r.error || "Ошибка"}
 										className={r.status === "ok" ? "statusOk" : "statusError"}
 										style={{
 											whiteSpace: "normal",
 											overflowWrap: "anywhere",
+											wordBreak: "break-word",
 											textOverflow: "clip",
 											lineHeight: 1.35,
 											paddingTop: 9,
@@ -169,10 +264,13 @@ export default function ImageScanner() {
 						</tbody>
 					</table>
 				</div>
+
 				{!rows.length && (
 					<div className="empty">
 						<FolderOpen size={32} />
+
 						<h2>Нет данных</h2>
+
 						<p>Выберите папку или файлы для начала обработки.</p>
 					</div>
 				)}
