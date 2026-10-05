@@ -110,7 +110,8 @@ export async function parseTIFF(file: File): Promise<Partial<ImageInfo>> {
   }
 
   if (!width || !height) throw new ParseError('TIFF: Width/Height не найдены');
-  const factor = unit === 2 ? 1 : unit === 3 ? 2.54 : undefined;
+  const resUnit = unit ?? 2;
+  const factor = resUnit === 2 ? 1 : resUnit === 3 ? 2.54 : undefined;
   return {
     format: 'TIFF', width, height, colorDepth: depth,
     dpiX: factor && dpiX ? dpiX * factor : undefined,

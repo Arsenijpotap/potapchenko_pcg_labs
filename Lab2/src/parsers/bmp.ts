@@ -2,7 +2,19 @@ import { ImageInfo } from "../core/types";
 import { ParseError } from "./utils";
 export async function parseBMP(file: File): Promise<Partial<ImageInfo>> {
 	const b = new DataView(await file.slice(0, 64).arrayBuffer());
-	if (b.byteLength < 54 || b.getUint8(0) !== 0x42 || b.getUint8(1) !== 0x4d) throw new ParseError("BMP: неверная сигнатура");
+	if (b.byteLength < 26 || b.getUint8(0) !== 0x42 || b.getUint8(1) !== 0x4d) throw new ParseError("BMP: неверная сигнатура");
+	const headerSize = b.getUint32(14, true);
+	if (headerSize === 12) {
+		// BITMAPCOREHEADER: поля ширины/высоты/глубины короче и нет разрешения
+		return {
+			format: "BMP",
+			width: b.getUint16(18, true),
+			height: b.getUint16(20, true),
+			colorDepth: b.getUint16(24, true),
+			compression: "BI_RGB (BITMAPCOREHEADER)",
+		};
+	}
+	if (b.byteLength < 54) throw new ParseError("BMP: неполный заголовок");
 	const w = b.getInt32(18, true),
 		h = Math.abs(b.getInt32(22, true)),
 		bd = b.getUint16(28, true),

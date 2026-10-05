@@ -1,5 +1,5 @@
 import { ImageInfo } from "../core/types";
-import { ParseError, ratioToDpi } from "./utils";
+import { ParseError, jfifToDpi, ratioToDpi } from "./utils";
 export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 	const b = new DataView(await file.slice(0, 1048576).arrayBuffer());
 	if (b.byteLength < 4 || b.getUint16(0, false) !== 0xffd8) throw new ParseError("JPEG: неверная сигнатура");
@@ -7,6 +7,7 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 		w: number | undefined,
 		h: number | undefined,
 		depth: number | undefined,
+		components: number | undefined,
 		dpiX: number | undefined,
 		dpiY: number | undefined,
 		progressive = false,
@@ -26,8 +27,8 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 			const unit = b.getUint8(d + 7),
 				xd = b.getUint16(d + 8, false),
 				yd = b.getUint16(d + 10, false);
-			dpiX = ratioToDpi(xd, unit);
-			dpiY = ratioToDpi(yd, unit);
+			dpiX = jfifToDpi(xd, unit);
+			dpiY = jfifToDpi(yd, unit);
 		} else if (m === 0xe1 && len >= 10 && String.fromCharCode(...new Uint8Array(b.buffer, d, 6)) === "Exif\0\0") {
 			const ex = parseExif(b, d + 6);
 			dpiX = ex.dpiX ?? dpiX;
@@ -37,6 +38,7 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 				depth = b.getUint8(d);
 				h = b.getUint16(d + 1, false);
 				w = b.getUint16(d + 3, false);
+				components = b.getUint8(d + 5);
 				progressive = [0xc2, 0xc6, 0xca, 0xce].includes(m);
 				foundSOF = true;
 				details = `${progressive ? "progressive" : "baseline/sequential"} JPEG`;
@@ -45,7 +47,7 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 		p += len;
 	}
 	if (!foundSOF || !w || !h) throw new ParseError("JPEG: не найден валидный SOF");
-	return { format: "JPEG", width: w, height: h, colorDepth: depth ? depth * 3 : undefined, dpiX, dpiY, compression: progressive ? "JPEG, progressive DCT" : "JPEG, baseline DCT", details };
+	return { format: "JPEG", width: w, height: h, colorDepth: depth && components ? depth * components : undefined, dpiX, dpiY, compression: progressive ? "JPEG, progressive DCT" : "JPEG, baseline DCT", details };
 }
 function parseExif(b: DataView, t: number) {
 	if (t + 8 > b.byteLength) return {};
@@ -63,11 +65,17 @@ function parseExif(b: DataView, t: number) {
 			count = b.getUint32(o + 4, le),
 			value = count * (type === 5 ? 8 : type === 3 ? 2 : 4);
 		if (type === 5 && count === 1) {
-			const vo = o + 8;
-			x = tag === 0x011a ? b.getUint32(vo, le) / b.getUint32(vo + 4, le) : x;
-			y = tag === 0x011b ? b.getUint32(vo, le) / b.getUint32(vo + 4, le) : y;
+			const vo = value > 4 ? t + b.getUint32(o + 8, le) : o + 8;
+			if (vo + 8 <= b.byteLength) {
+				const num = b.getUint32(vo, le),
+					den = b.getUint32(vo + 4, le);
+				if (den) {
+					if (tag === 0x011a) x = num / den;
+					if (tag === 0x011b) y = num / den;
+				}
+			}
 		}
 		if (tag === 0x0128 && type === 3) u = b.getUint16(o + 8, le);
 	}
-	return { dpiX: ratioToDpi(x, u), dpiY: ratioToDpi(y, u) };
+	return { dpiX: ratioToDpi(x, u ?? 2), dpiY: ratioToDpi(y, u ?? 2) };
 }
