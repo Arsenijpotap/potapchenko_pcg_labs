@@ -12,7 +12,8 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 		dpiY: number | undefined,
 		progressive = false,
 		foundSOF = false,
-		details = "";
+		details = "",
+		quantizationTables: number[][] = [];
 	while (p + 4 <= b.byteLength) {
 		while (p < b.byteLength && b.getUint8(p) !== 0xff) p++;
 		if (p + 3 > b.byteLength) break;
@@ -23,7 +24,23 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 		const len = b.getUint16(p, false);
 		if (len < 2 || p + len > b.byteLength) break;
 		const d = p + 2;
-		if (m === 0xe0 && len >= 16 && String.fromCharCode(...new Uint8Array(b.buffer, d, 5)) === "JFIF\0") {
+		if (m === 0xdb) {
+			const segmentEnd = p + len;
+			let q = p + 2;
+			while (q < segmentEnd) {
+				const info = b.getUint8(q++);
+				const precision = info >> 4;
+				const tableId = info & 0x0f;
+				const elementSize = precision === 0 ? 1 : 2;
+				if (precision > 1 || q + 64 * elementSize > segmentEnd) break;
+				const table: number[] = [];
+				for (let i = 0; i < 64; i++) {
+					if (elementSize === 1) table.push(b.getUint8(q++));
+					else { table.push(b.getUint16(q, false)); q += 2; }
+				}
+				quantizationTables[tableId] = table;
+			}
+		} else if (m === 0xe0 && len >= 16 && String.fromCharCode(...new Uint8Array(b.buffer, d, 5)) === "JFIF\0") {
 			const unit = b.getUint8(d + 7),
 				xd = b.getUint16(d + 8, false),
 				yd = b.getUint16(d + 10, false);
@@ -47,7 +64,7 @@ export async function parseJPEG(file: File): Promise<Partial<ImageInfo>> {
 		p += len;
 	}
 	if (!foundSOF || !w || !h) throw new ParseError("JPEG: не найден валидный SOF");
-	return { format: "JPEG", width: w, height: h, colorDepth: depth && components ? depth * components : undefined, dpiX, dpiY, compression: progressive ? "JPEG, progressive DCT" : "JPEG, baseline DCT", details };
+	return { format: "JPEG", width: w, height: h, colorDepth: depth && components ? depth * components : undefined, dpiX, dpiY, compression: progressive ? "JPEG, progressive DCT" : "JPEG, baseline DCT", details, quantizationTables };
 }
 function parseExif(b: DataView, t: number) {
 	if (t + 8 > b.byteLength) return {};
@@ -77,5 +94,5 @@ function parseExif(b: DataView, t: number) {
 		}
 		if (tag === 0x0128 && type === 3) u = b.getUint16(o + 8, le);
 	}
-	return { dpiX: ratioToDpi(x, u ?? 2), dpiY: ratioToDpi(y, u ?? 2) };
+	return { dpiX: ratioToDpi(x, u), dpiY: ratioToDpi(y, u) };
 }

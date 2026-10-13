@@ -110,12 +110,12 @@ export async function parseTIFF(file: File): Promise<Partial<ImageInfo>> {
   }
 
   if (!width || !height) throw new ParseError('TIFF: Width/Height не найдены');
-  const resUnit = unit ?? 2;
+  const resUnit = unit;
   const factor = resUnit === 2 ? 1 : resUnit === 3 ? 2.54 : undefined;
   return {
     format: 'TIFF', width, height, colorDepth: depth,
-    dpiX: factor && dpiX ? dpiX * factor : undefined,
-    dpiY: factor && dpiY ? dpiY * factor : undefined,
+    dpiX: factor && dpiX && Number.isFinite(dpiX) && dpiX > 0 ? dpiX * factor : undefined,
+    dpiY: factor && dpiY && Number.isFinite(dpiY) && dpiY > 0 ? dpiY * factor : undefined,
     compression: compressionName(compression),
     details: `${big ? 'BigTIFF' : 'TIFF'}; IFD: ${ifds}`,
   };

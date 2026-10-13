@@ -1,5 +1,5 @@
 import { ImageInfo } from "../core/types";
-import { ParseError } from "./utils";
+import { ParseError, finitePositive } from "./utils";
 export async function parseBMP(file: File): Promise<Partial<ImageInfo>> {
 	const b = new DataView(await file.slice(0, 64).arrayBuffer());
 	if (b.byteLength < 26 || b.getUint8(0) !== 0x42 || b.getUint8(1) !== 0x4d) throw new ParseError("BMP: неверная сигнатура");

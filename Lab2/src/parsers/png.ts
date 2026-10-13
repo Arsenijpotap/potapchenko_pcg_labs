@@ -1,14 +1,23 @@
 import { ImageInfo } from "../core/types";
-import { ParseError } from "./utils";
+import { ParseError, finitePositive } from "./utils";
 export async function parsePNG(file: File): Promise<Partial<ImageInfo>> {
 	const b = new DataView(await file.slice(0, 65536).arrayBuffer());
-	if (b.byteLength < 24) throw new ParseError("PNG: файл слишком короткий");
+	if (b.byteLength < 33) throw new ParseError("PNG: файл слишком короткий");
 	const sig = [137, 80, 78, 71, 13, 10, 26, 10];
 	for (let i = 0; i < 8; i++) if (b.getUint8(i) !== sig[i]) throw new ParseError("PNG: неверная сигнатура");
-	const w = b.getUint32(16),
+	const ihdrLength = b.getUint32(8),
+		ihdrType = String.fromCharCode(b.getUint8(12), b.getUint8(13), b.getUint8(14), b.getUint8(15)),
+		w = b.getUint32(16),
 		h = b.getUint32(20),
 		bd = b.getUint8(24),
-		ct = b.getUint8(25);
+		ct = b.getUint8(25),
+		compressionMethod = b.getUint8(26),
+		filterMethod = b.getUint8(27),
+		interlace = b.getUint8(28);
+	if (ihdrLength !== 13 || ihdrType !== "IHDR") throw new ParseError("PNG: некорректный IHDR");
+	if (!w || !h || compressionMethod !== 0 || filterMethod !== 0 || interlace > 1) throw new ParseError("PNG: некорректный заголовок");
+	const validBitDepths: Record<number, number[]> = { 0: [1,2,4,8,16], 2: [8,16], 3: [1,2,4,8], 4: [8,16], 6: [8,16] };
+	if (!validBitDepths[ct]?.includes(bd)) throw new ParseError("PNG: недопустимая глубина цвета");
 	let p = 8,
 		dpiX: number | undefined,
 		dpiY: number | undefined,
@@ -21,8 +30,8 @@ export async function parsePNG(file: File): Promise<Partial<ImageInfo>> {
 				y = b.getUint32(p + 12),
 				u = b.getUint8(p + 16);
 			if (u === 1) {
-				dpiX = x / 39.37007874015748;
-				dpiY = y / 39.37007874015748;
+				dpiX = finitePositive(x / 39.37007874015748);
+				dpiY = finitePositive(y / 39.37007874015748);
 			}
 		}
 		if (type === "IDAT") break;

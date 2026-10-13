@@ -211,6 +211,7 @@ export default function ImageScanner() {
 										["dpiX", "DPI"],
 										["colorDepth", "Глубина"],
 										["compression", "Сжатие"],
+										["quantizationTables", "Матрица квантования"],
 										["path", "Путь"],
 										["status", "Статус"],
 									] as const
@@ -241,6 +242,16 @@ export default function ImageScanner() {
 									<td>{r.colorDepth ? `${r.colorDepth} bit` : "—"}</td>
 
 									<td title={r.details}>{r.compression || "—"}</td>
+
+							<td>
+								{r.quantizationTables?.[0] ? (
+									<div style={{ whiteSpace: "pre", fontSize: 10, lineHeight: 1.2 }}>
+										{Array.from({ length: 8 }, (_, row) =>
+												r.quantizationTables![0].slice(row * 8, row * 8 + 8).join(" "),
+										).join("\n")}
+									</div>
+								) : "—"}
+							</td>
 
 									<td title={r.path}>{r.path}</td>
 
