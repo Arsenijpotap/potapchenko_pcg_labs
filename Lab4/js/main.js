@@ -41,11 +41,16 @@ function draw() {
   } else {
     const cx = getNumber('cx');
     const cy = getNumber('cy');
-    const rx = Math.max(1, getNumber('rx'));
-    const ry = Math.max(1, getNumber('ry'));
-    if (primitive === 'circle') circle(cx, cy, rx);
-    else pitEllipse(cx, cy, rx, ry);
-    byId('coordsMetric').textContent = primitive === 'circle' ? `r = ${rx}` : `${rx} × ${ry}`;
+    if (primitive === 'circle') {
+      const radius = Math.max(1, getNumber('r'));
+      circle(cx, cy, radius);
+      byId('coordsMetric').textContent = `r = ${radius}`;
+    } else {
+      const rx = Math.max(1, getNumber('rx'));
+      const ry = Math.max(1, getNumber('ry'));
+      pitEllipse(cx, cy, rx, ry);
+      byId('coordsMetric').textContent = `${rx} × ${ry}`;
+    }
   }
   const elapsed = performance.now() - start;
   render();
@@ -57,13 +62,19 @@ function updateInputs() {
   const primitive = byId('primitive').value;
   const isLine = primitive === 'line';
   const isArc = primitive === 'arc';
+  const isCircle = primitive === 'circle';
+  const isEllipse = primitive === 'ellipse';
   byId('lineInputs').style.display = isLine ? 'block' : 'none';
-  byId('shapeInputs').style.display = !isLine && !isArc ? 'block' : 'none';
+  byId('shapeInputs').style.display = isCircle || isEllipse ? 'block' : 'none';
+  byId('circleRadius').style.display = isCircle ? 'grid' : 'none';
+  byId('ellipseRadii').style.display = isEllipse ? 'grid' : 'none';
   byId('arcInputs').style.display = isArc ? 'block' : 'none';
+  byId('algorithmField').style.display = isLine ? 'flex' : 'none';
+  byId('fixedAlgorithmField').style.display = isLine ? 'none' : 'flex';
+  byId('fixedAlgorithm').value = isCircle ? 'Брезенхем' : 'Кастла—Питтвея';
   if (primitive === 'ellipse' || isArc) byId('algorithm').value = 'pit';
   else if (primitive === 'circle') byId('algorithm').value = 'bres';
   if (isLine && byId('algorithm').value === 'pit') byId('algorithm').value = 'bres';
-  byId('algorithm').disabled = !isLine;
   byId('algorithm').querySelector('option[value="pit"]').disabled = isLine;
 }
 
@@ -85,8 +96,14 @@ byId('clearBtn').addEventListener('click', () => {
   byId('drawTime').textContent = '—';
   byId('coordsMetric').textContent = '—';
 });
-byId('primitive').addEventListener('change', updateInputs);
-byId('algorithm').addEventListener('change', updateInputs);
+byId('primitive').addEventListener('change', () => {
+  updateInputs();
+  draw();
+});
+byId('algorithm').addEventListener('change', draw);
+document.querySelectorAll('#lineInputs input, #shapeInputs input, #arcInputs input').forEach(input => {
+  input.addEventListener('change', draw);
+});
 byId('zoom').addEventListener('change', render);
 byId('showGrid').addEventListener('change', render);
 byId('showSteps').addEventListener('change', render);
