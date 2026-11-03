@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f3ee">
+  <title>
+    Растеризация — лабораторная работа 4
+  </title>
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+<body>
+  <div class="shell">
+    <header class="top">
+      <div class="brand">PCG<span>.</span>LAB</div>
+      <div class="topmeta">
+        КОМПЬЮТЕРНАЯ ГРАФИКА · 2025—26
+      </div>
+    </header>
+    <section class="hero">
+      <div>
+        <div class="eyebrow">
+          Лабораторная работа 04
+        </div>
+        <h1>
+          Базовые растровые
+          <br>
+          алгоритмы
+        </h1>
+      </div>
+      <div class="score">
+        РАСТР · АЛГОРИТМЫ · ИЗМЕРЕНИЯ
+      </div>
+    </section>
+    <nav class="tabs">
+      <button class="tab active" data-view="studio">
+        Визуализация
+      </button>
+      <button class="tab" data-view="benchmark">
+        Бенчмарк
+      </button>
+    </nav>
+    <section class="view active" id="studio">
+      <div class="layout">
+        <div>
+          <div class="card canvas-card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">
+                  Дискретная координатная плоскость
+                </div>
+                <div class="subtle" style="margin-top:5px">
+                  VIRTUAL RASTER · 81 × 61 CELLS
+                </div>
+              </div>
+              <div class="subtle" id="viewScale">
+                МАСШТАБ 1×
+              </div>
+            </div>
+            <canvas id="plot" aria-label="Дискретная координатная сетка с растеризованным примитивом">
+            </canvas>
+          </div>
+          <div class="metrics">
+            <div class="card metric">
+              <div class="k">
+                Закрашено ячеек
+              </div>
+              <div class="v" id="pixelCount">
+                —
+              </div>
+            </div>
+            <div class="card metric">
+              <div class="k">
+                Вычисление
+              </div>
+              <div class="v" id="drawTime">
+                —
+              </div>
+            </div>
+            <div class="card metric">
+              <div class="k">
+                Координаты
+              </div>
+              <div class="v" id="coordsMetric">
+                —
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="card controls">
+          <p class="section-label">
+            Примитив и метод
+          </p>
+          <div class="fieldrow">
+            <div class="field full">
+              <label for="primitive">
+                Примитив
+              </label>
+              <select id="primitive">
+                <option value="line">
+                  Отрезок
+                </option>
+                <option value="circle">
+                  Окружность
+                </option>
+                <option value="ellipse">
+                  Эллипс
+                </option>
+                <option value="arc">
+                  Коническая дуга
+                </option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="algorithm">
+                Алгоритм
+              </label>
+              <select id="algorithm">
+                <option value="step">
+                  Пошаговый
+                </option>
+                <option value="dda">
+                  ЦДА (DDA)
+                </option>
+                <option value="bres">
+                  Брезенхем
+                </option>
+                <option value="wu">
+                  Ву · сглаживание
+                </option>
+                <option value="pit">
+                  Кастла—Питтвея
+                </option>
+              </select>
+            </div>
+          </div>
+          <div id="lineInputs">
+            <p class="section-label" style="margin-top:17px">
+              Координаты концов
+            </p>
+            <div class="fieldrow">
+              <div class="field">
+                <label for="x0">
+                  x₀
+                </label>
+                <input id="x0" type="number" value="-27">
+              </div>
+              <div class="field">
+                <label for="y0">
+                  y₀
+                </label>
+                <input id="y0" type="number" value="-16">
+              </div>
+              <div class="field">
+                <label for="x1">
+                  x₁
+                </label>
+                <input id="x1" type="number" value="28">
+              </div>
+              <div class="field">
+                <label for="y1">
+                  y₁
+                </label>
+                <input id="y1" type="number" value="21">
+              </div>
+            </div>
+          </div>
+          <div id="shapeInputs" style="display:none">
+            <p class="section-label" style="margin-top:17px">
+              Параметры кривой
+            </p>
+            <div class="fieldrow">
+              <div class="field">
+                <label for="cx">
+                  Центр x
+                </label>
+                <input id="cx" type="number" value="0">
+              </div>
+              <div class="field">
+                <label for="cy">
+                  Центр y
+                </label>
+                <input id="cy" type="number" value="0">
+              </div>
+              <div class="field">
+                <label for="rx">
+                  Радиус
+                </label>
+                <input id="rx" type="number" min="1" value="22">
+              </div>
+              <div class="field">
+
+              </div>
+            </div>
+          </div>
+          <div id="arcInputs" style="display:none">
+            <p class="section-label" style="margin-top:17px">
+              Коника в координатах от начальной точки
+            </p>
+            <div class="fieldrow">
+              <div class="field">
+                <label for="asx">
+                  Начало x
+                </label>
+                <input id="asx" type="number" value="10">
+              </div>
+              <div class="field">
+                <label for="asy">
+                  Начало y
+                </label>
+                <input id="asy" type="number" value="0">
+              </div>
+              <div class="field">
+                <label for="aex">
+                  Конец x
+                </label>
+                <input id="aex" type="number" value="0">
+              </div>
+              <div class="field">
+                <label for="aey">
+                  Конец y
+                </label>
+                <input id="aey" type="number" value="10">
+              </div>
+              <div class="field">
+                <label for="coefA">
+                  A
+                </label>
+                <input id="coefA" type="number" value="1">
+              </div>
+              <div class="field">
+                <label for="coefB">
+                  B
+                </label>
+                <input id="coefB" type="number" value="0">
+              </div>
+              <div class="field">
+                <label for="coefC">
+                  C
+                </label>
+                <input id="coefC" type="number" value="1">
+              </div>
+              <div class="field">
+                <label for="coefD">
+                  D
+                </label>
+                <input id="coefD" type="number" value="20">
+              </div>
+              <div class="field">
+                <label for="coefE">
+                  E
+                </label>
+                <input id="coefE" type="number" value="0">
+              </div>
+              <div class="field">
+                <label for="coefF">
+                  F
+                </label>
+                <input id="coefF" type="number" value="0">
+              </div>
+            </div>
+          </div>
+          <div class="fieldrow" style="margin-top:12px">
+            <div class="field">
+              <label for="zoom">
+                Масштаб ячейки
+              </label>
+              <select id="zoom">
+                <option value="1">
+                  1× · обычный
+                </option>
+                <option value="1.4">
+                  1,4× · крупный
+                </option>
+                <option value=".72">
+                  0,72× · обзор
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn" id="drawBtn">
+              Построить
+            </button>
+            <button class="btn secondary" id="clearBtn">
+              Очистить
+            </button>
+          </div>
+          <div class="divider">
+          </div>
+          <p class="section-label">
+            Слои отображения
+          </p>
+          <div class="algolist">
+            <label class="checkrow">
+              <input type="checkbox" id="showGrid" checked>
+              Линии сетки, оси и подписи
+            </label>
+            <label class="checkrow">
+              <input type="checkbox" id="showSteps">
+              Показать порядок обхода
+            </label>
+          </div>
+        </aside>
+      </div>
+    </section>
+    <section class="view" id="benchmark">
+      <div class="card report-intro">
+        <div class="benchmark-head">
+          <div>
+            <h2>
+              Измерение производительности
+            </h2>
+            <p>
+              Таймер охватывает только заполнение виртуального растра. Обновление Canvas и построение сетки не входят во
+              время алгоритма. Полный прогон: 100&nbsp;000 отрезков во всех октантах и 50&nbsp;000 окружностей.
+            </p>
+          </div>
+          <button class="btn" id="benchBtn">
+            Запустить 150 000 примитивов
+          </button>
+        </div>
+        <div class="progress" id="progress">
+          <span id="progressBar">
+          </span>
+        </div>
+        <div class="status" id="benchStatus">
+          График появится после запуска измерений.
+        </div>
+      </div>
+      <div class="report-grid">
+        <article class="card report-card wide">
+          <h3>
+            Время обработки отрезков · накопительный замер
+          </h3>
+          <canvas class="chart" id="lineChart">
+          </canvas>
+          <div class="subtle" style="margin-top:8px">
+            Количество примитивов → · миллисекунды ↑ · DDA и Брезенхем для одинаковых наборов
+          </div>
+        </article>
+        <article class="card report-card">
+          <h3>
+            Итоговые значения
+          </h3>
+          <div class="tablewrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    Набор
+                  </th>
+                  <th>
+                    Число
+                  </th>
+                  <th>
+                    Время, мс
+                  </th>
+                  <th>
+                    Среднее, мкс
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="benchTable">
+                <tr>
+                  <td colspan="4" class="muted">
+                    Запустите измерение для получения фактических данных.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <article class="card report-card">
+          <h3>
+            Влияние длины линии
+          </h3>
+          <canvas class="chart" id="lengthChart" style="height:180px">
+          </canvas>
+          <div class="subtle" style="margin-top:7px">
+            Время для одинакового количества линий разной длины
+          </div>
+        </article>
+      </div>
+    </section>
+    <footer class="footer">
+      <span>
+        ЛАБОРАТОРНАЯ РАБОТА № 4 · КОМПЬЮТЕРНАЯ ГРАФИКА
+      </span>
+      <span>
+        VIRTUAL RASTER / SETPIXEL
+      </span>
+    </footer>
+  </div>
+  <script type="module" src="./js/main.js">
+  </script>
+</body>
+
+</html>
